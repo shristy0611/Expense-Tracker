@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="mb-4">Upload Receipts</h1>
+    
+    <div class="row">
+        <div class="col-lg-7 order-lg-1 order-2">
+            <!-- Receipt Upload Area -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Upload Receipt Image</h5>
+                </div>
+                <div class="card-body">
+                    <div id="receipt-dropzone" class="dropzone">
+                        <!-- Dropzone.js will handle this -->
+                    </div>
+                    <div class="text-muted mt-2 small">
+                        <p>Supported formats: JPG, PNG, HEIC, and other image formats</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Extracted Data Display -->
+            <div id="extracted-data">
+                <!-- Data will be displayed here after receipt processing -->
+            </div>
+        </div>
+        
+        <div class="col-lg-5 order-lg-2 order-1 mb-4 mb-lg-0">
+            <!-- Manual Entry Form -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Transaction Details</h5>
+                </div>
+                <div class="card-body">
+                    <form id="manual-transaction-form">
+                        <div class="mb-3">
+                            <label for="merchant" class="form-label">Merchant</label>
+                            <input type="text" class="form-control" id="merchant" placeholder="Enter merchant name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="amount" step="0.01" min="0" placeholder="0.00" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Category</label>
+                            <select class="form-select" id="category" required>
+                                <option value="" selected disabled>Select a category</option>
+                                {% for category in categories %}
+                                <option value="{{ category }}">{{ category }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" rows="2" placeholder="Optional description"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Save Transaction</button>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Instructions Card -->
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">How It Works</h5>
+                </div>
+                <div class="card-body">
+                    <ol class="mb-0">
+                        <li class="mb-2">Upload your receipt image using the upload area.</li>
+                        <li class="mb-2">Our AI will extract merchant, amount, and other details.</li>
+                        <li class="mb-2">Review the extracted information in the form.</li>
+                        <li class="mb-2">Make any necessary adjustments to the data.</li>
+                        <li>Click "Save Transaction" to record the expense.</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/upload.js') }}"></script>
+{% endblock %}
