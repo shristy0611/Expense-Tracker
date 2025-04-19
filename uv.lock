@@ -870,6 +870,7 @@ dependencies = [
     { name = "google-generativeai" },
     { name = "gunicorn" },
     { name = "psycopg2-binary" },
+    { name = "requests" },
     { name = "sift-stack-py" },
     { name = "werkzeug" },
 ]
@@ -883,6 +884,7 @@ requires-dist = [
     { name = "google-generativeai", specifier = ">=0.8.5" },
     { name = "gunicorn", specifier = ">=23.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
+    { name = "requests", specifier = ">=2.32.3" },
     { name = "sift-stack-py", specifier = ">=0.5.1" },
     { name = "werkzeug", specifier = ">=3.1.3" },
 ]
