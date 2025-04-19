@@ -149,15 +149,28 @@ def reports():
 @app.route('/api/transactions', methods=['GET'])
 def get_transactions():
     try:
+        logger.info("Attempting to get all transactions")
         # Get all transactions ordered by date descending
-        transactions = Transaction.query.order_by(Transaction.date.desc()).all()
+        try:
+            logger.info("Querying Transaction model")
+            transactions = Transaction.query.order_by(Transaction.date.desc()).all()
+            logger.info(f"Found {len(transactions)} transactions")
+        except Exception as query_error:
+            logger.error(f"Failed to query transactions: {str(query_error)}")
+            return jsonify({"error": f"Database query failed: {str(query_error)}"}), 500
+            
         result = []
         
         # Format data for response
         for t in transactions:
-            t_dict = t.to_dict()
-            result.append(t_dict)
-            
+            try:
+                t_dict = t.to_dict()
+                result.append(t_dict)
+            except Exception as dict_error:
+                logger.error(f"Failed to convert transaction to dict: {str(dict_error)}")
+                # Continue with other transactions
+        
+        logger.info(f"Successfully returning {len(result)} transactions")
         return jsonify(result)
     except Exception as e:
         logger.error(f"Error getting transactions: {str(e)}")
@@ -166,42 +179,62 @@ def get_transactions():
 @app.route('/api/transactions', methods=['POST'])
 def add_transaction():
     try:
+        logger.info("Starting add_transaction endpoint")
         data = request.json
         logger.info(f"Received transaction data: {data}")
         
         # Set default date if not provided
         if 'date' not in data or not data.get('date'):
             date_val = datetime.now()
+            logger.info(f"Using default date: {date_val}")
         else:
-            date_val = datetime.strptime(data.get('date'), '%Y-%m-%d')
+            try:
+                date_val = datetime.strptime(data.get('date'), '%Y-%m-%d')
+                logger.info(f"Parsed date: {date_val}")
+            except ValueError as e:
+                logger.error(f"Invalid date format: {data.get('date')}")
+                return jsonify({"success": False, "error": f"Invalid date format: {str(e)}"}), 400
             
         # Create new transaction from request data with proper defaults
-        new_transaction = Transaction(
-            date=date_val,
-            merchant=data.get('merchant', 'Unknown Merchant'),
-            amount=float(data.get('amount', 0)),
-            currency=data.get('currency', DEFAULT_CURRENCY),
-            category=data.get('category', 'Other'),
-            description=data.get('description', ''),
-            items=data.get('items', None)
-        )
+        try:
+            logger.info("Creating new Transaction object")
+            new_transaction = Transaction(
+                date=date_val,
+                merchant=data.get('merchant', 'Unknown Merchant'),
+                amount=float(data.get('amount', 0)),
+                currency=data.get('currency', DEFAULT_CURRENCY),
+                category=data.get('category', 'Other'),
+                description=data.get('description', ''),
+                items=data.get('items', None)
+            )
+            logger.info("Transaction object created successfully")
+        except Exception as create_error:
+            logger.error(f"Failed to create Transaction object: {str(create_error)}")
+            return jsonify({"success": False, "error": f"Failed to create transaction: {str(create_error)}"}), 400
         
         # Explicitly commit to database with error handling
         try:
             logger.info(f"Adding transaction to database: {new_transaction.merchant}, {new_transaction.amount} {new_transaction.currency}")
             db.session.add(new_transaction)
+            logger.info("Transaction added to session")
             db.session.commit()
             logger.info(f"Transaction committed successfully with ID: {new_transaction.id}")
         except Exception as db_error:
-            db.session.rollback()
             logger.error(f"Database error when adding transaction: {str(db_error)}")
-            raise db_error
+            db.session.rollback()
+            logger.info("Session rolled back due to error")
+            return jsonify({"success": False, "error": f"Database error: {str(db_error)}"}), 500
         
         # Return the created transaction
-        result = new_transaction.to_dict()
-        return jsonify({"success": True, "transaction": result})
+        try:
+            result = new_transaction.to_dict()
+            logger.info("Transaction converted to dict successfully")
+            return jsonify({"success": True, "transaction": result})
+        except Exception as dict_error:
+            logger.error(f"Error converting transaction to dict: {str(dict_error)}")
+            return jsonify({"success": True, "message": "Transaction saved but failed to format response"}), 200
     except Exception as e:
-        logger.error(f"Error adding transaction: {str(e)}")
+        logger.error(f"Unexpected error adding transaction: {str(e)}")
         if 'db_session' in locals():
             db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
