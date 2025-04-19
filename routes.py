@@ -10,8 +10,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import requests
 
 # Import application and models
-from application import app, db, logger
-from models import Transaction, ExchangeRate, TRANSACTION_CATEGORIES, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY
+from application import app, db, logger, Transaction, ExchangeRate
+from models import TRANSACTION_CATEGORIES, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY
 
 # Configure upload folder for receipts
 UPLOAD_FOLDER = 'static/uploads'

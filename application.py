@@ -22,8 +22,8 @@ app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
 # Initialize database
 db = SQLAlchemy(app)
 
-# Import database models
-from models import SUPPORTED_CURRENCIES, DEFAULT_CURRENCY
+# Import constants from models
+from models import SUPPORTED_CURRENCIES, DEFAULT_CURRENCY, TRANSACTION_CATEGORIES 
 from datetime import datetime
 
 # Define transaction models with SQLAlchemy
