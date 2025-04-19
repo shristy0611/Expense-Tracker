@@ -11,6 +11,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (manualForm) {
         manualForm.addEventListener('submit', handleManualSubmit);
     }
+    
+    // Currency select change handler
+    const currencySelect = document.getElementById('currency');
+    if (currencySelect) {
+        currencySelect.addEventListener('change', updateCurrencySymbol);
+        // Initialize currency symbol
+        updateCurrencySymbol();
+    }
 });
 
 function initializeDropzone() {
@@ -44,11 +52,17 @@ function initializeDropzone() {
                     // Pre-fill the manual form with extracted data
                     document.getElementById('merchant').value = response.transaction.merchant;
                     document.getElementById('amount').value = response.transaction.amount;
+                    if (response.transaction.currency) {
+                        document.getElementById('currency').value = response.transaction.currency;
+                        updateCurrencySymbol();
+                    }
                     document.getElementById('category').value = response.transaction.category;
                     document.getElementById('description').value = response.transaction.description;
                     
                     // Show the extracted data
                     const extractedDataElement = document.getElementById('extracted-data');
+                    const currency = response.transaction.currency || currentCurrency;
+                    
                     extractedDataElement.innerHTML = `
                         <div class="card mt-4">
                             <div class="card-header bg-primary text-white">
@@ -63,7 +77,10 @@ function initializeDropzone() {
                                     <dd class="col-sm-9">${response.transaction.date}</dd>
                                     
                                     <dt class="col-sm-3">Amount:</dt>
-                                    <dd class="col-sm-9">${formatCurrency(response.transaction.amount)}</dd>
+                                    <dd class="col-sm-9">${formatCurrency(response.transaction.amount, currency)}</dd>
+                                    
+                                    <dt class="col-sm-3">Currency:</dt>
+                                    <dd class="col-sm-9">${currency}</dd>
                                     
                                     <dt class="col-sm-3">Category:</dt>
                                     <dd class="col-sm-9">${response.transaction.category}</dd>
@@ -100,11 +117,23 @@ function initializeDropzone() {
     });
 }
 
+// Update currency symbol based on selected currency
+function updateCurrencySymbol() {
+    const currencySelect = document.getElementById('currency');
+    const currencySymbol = document.getElementById('currency-symbol');
+    
+    if (currencySelect && currencySymbol) {
+        const selectedCurrency = currencySelect.value;
+        currencySymbol.textContent = getCurrencySymbol(selectedCurrency);
+    }
+}
+
 async function handleManualSubmit(event) {
     event.preventDefault();
     
     const merchant = document.getElementById('merchant').value.trim();
     const amount = parseFloat(document.getElementById('amount').value);
+    const currency = document.getElementById('currency').value;
     const category = document.getElementById('category').value;
     const description = document.getElementById('description').value.trim();
     
@@ -128,6 +157,7 @@ async function handleManualSubmit(event) {
     const transaction = {
         merchant,
         amount,
+        currency,
         category,
         description: description || `Purchase from ${merchant}`
     };
@@ -153,6 +183,9 @@ async function handleManualSubmit(event) {
             showSuccess("Transaction added successfully!");
             // Clear the form
             document.getElementById('manual-transaction-form').reset();
+            // Reset currency to default
+            document.getElementById('currency').value = currentCurrency;
+            updateCurrencySymbol();
             // Clear extracted data display
             document.getElementById('extracted-data').innerHTML = '';
         } else {

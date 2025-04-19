@@ -48,6 +48,21 @@
                         <a class="nav-link" href="/reports">Reports</a>
                     </li>
                 </ul>
+                
+                <!-- Currency Selector -->
+                <div class="ms-auto d-flex align-items-center">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-light dropdown-toggle" type="button" id="currencyDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i data-feather="dollar-sign" class="feather-small me-1"></i>
+                            <span id="currentCurrency">USD</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" id="currencySelector" aria-labelledby="currencyDropdown">
+                            {% for currency in currencies|default(['USD', 'EUR', 'JPY', 'GBP', 'AUD', 'CAD', 'CHF', 'CNY', 'INR']) %}
+                                <li><a class="dropdown-item currency-option" href="#" data-currency="{{ currency }}">{{ currency }}</a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
