@@ -1,8 +1,13 @@
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
+import json
+import logging
 
-# Initialize SQLAlchemy
-db = SQLAlchemy()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# This will be imported by application.py
+# Do not import db here to avoid circular imports
 
 # Define list of supported currencies
 SUPPORTED_CURRENCIES = ["USD", "EUR", "JPY", "GBP", "AUD", "CAD", "CHF", "CNY", "INR"]
@@ -23,18 +28,14 @@ TRANSACTION_CATEGORIES = [
     "Other"
 ]
 
-class Transaction(db.Model):
+# Default currency
+DEFAULT_CURRENCY = "USD"
+
+# These model classes will be used with a SQLAlchemy db instance
+# This will be provided by the application when imported
+class Transaction:
     """Transaction model for storing financial transactions"""
-    id = db.Column(db.Integer, primary_key=True)
-    date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    merchant = db.Column(db.String(255), nullable=False)
-    amount = db.Column(db.Float, nullable=False)
-    currency = db.Column(db.String(3), nullable=False, default="USD")  # Currency code
-    category = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.Text, nullable=True)
-    receipt_image_path = db.Column(db.String(500), nullable=True)
-    receipt_data = db.Column(db.Text, nullable=True)
-    items = db.Column(db.Text, nullable=True)  # JSON text of items
+    __tablename__ = 'transaction'
     
     def to_dict(self):
         """Convert transaction to dictionary for JSON responses"""
@@ -50,13 +51,9 @@ class Transaction(db.Model):
             "items": self.items
         }
 
-class ExchangeRate(db.Model):
+class ExchangeRate:
     """Exchange rate model for currency conversion"""
-    id = db.Column(db.Integer, primary_key=True)
-    base_currency = db.Column(db.String(3), nullable=False)
-    target_currency = db.Column(db.String(3), nullable=False)
-    rate = db.Column(db.Float, nullable=False)
-    last_updated = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    __tablename__ = 'exchange_rate'
     
     def to_dict(self):
         """Convert exchange rate to dictionary for JSON responses"""

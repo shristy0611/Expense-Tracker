@@ -1,23 +1,17 @@
 import os
 import logging
 import json
-import base64
-import io
-import time
-import requests
 import uuid
 from datetime import datetime, timedelta
-from flask import render_template, request, redirect, url_for, flash, jsonify, session, Flask
+from flask import render_template, request, redirect, url_for, flash, jsonify, session
 from werkzeug.utils import secure_filename
 import google.generativeai as genai
 from werkzeug.middleware.proxy_fix import ProxyFix
+import requests
 
-# Create Flask application
-app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "default-dev-secret")
-
-# Apply ProxyFix middleware
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+# Import application and models
+from application import app, db, logger
+from models import Transaction, ExchangeRate, TRANSACTION_CATEGORIES, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY
 
 # Configure upload folder for receipts
 UPLOAD_FOLDER = 'static/uploads'
@@ -25,16 +19,11 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Apply ProxyFix middleware
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Setup Gemini API
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY", "your-gemini-api-key"))
-
-# Import models (circular import is handled in main.py)
-from models import Transaction, ExchangeRate, TRANSACTION_CATEGORIES, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY
-from main import db
 
 # Currency conversion helper function
 def convert_currency(amount, from_currency, to_currency):
