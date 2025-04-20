@@ -99,8 +99,8 @@
             feather.replace();
         });
     </script>
-    <!-- Main JS -->
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <!-- Main JS with cache busting -->
+    <script src="{{ url_for('static', filename='js/main.js') }}?v={{ config.SECRET_KEY }}"></script>
     
     <!-- Page-specific JS -->
     {% block scripts %}{% endblock %}

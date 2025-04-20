@@ -1,4 +1,5 @@
 import os
+from flask import current_app
 import logging
 import json
 import uuid
@@ -10,17 +11,17 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import requests
 
 # Import application and models
-from application import app, db, logger, Transaction, ExchangeRate
+from application import db, logger, Transaction, ExchangeRate
+from flask import Blueprint
+
+main_bp = Blueprint('main', __name__)
 from models import TRANSACTION_CATEGORIES, SUPPORTED_CURRENCIES, DEFAULT_CURRENCY
 
 # Configure upload folder for receipts
 UPLOAD_FOLDER = 'static/uploads'
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Apply ProxyFix middleware
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+# app config and wsgi_app setup is now handled in application.py
 
 # Setup Gemini API
 genai.configure(api_key=os.environ.get("GEMINI_API_KEY", "your-gemini-api-key"))
@@ -103,50 +104,51 @@ def update_exchange_rates():
         db.session.rollback()
 
 # Use a first request handler instead of before_first_request which was removed in Flask 2.3+
-@app.before_request
+@main_bp.before_app_request
 def initialize_app():
     # We'll use this request handler flag to run once
-    if getattr(app, '_exchange_rates_initialized', False):
+    from flask import current_app
+    if getattr(current_app, '_exchange_rates_initialized', False):
         return 
     
     # Update exchange rates the first time 
     update_exchange_rates()
-    app._exchange_rates_initialized = True
+    current_app._exchange_rates_initialized = True
 
 # Routes
-@app.route('/')
+@main_bp.route('/')
 def index():
     update_exchange_rates()
     return render_template('index.html')
 
-@app.route('/dashboard')
+@main_bp.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html', 
                           currencies=SUPPORTED_CURRENCIES,
                           current_currency=session.get('currency', DEFAULT_CURRENCY))
 
-@app.route('/upload')
+@main_bp.route('/upload')
 def upload():
     return render_template('upload.html', 
                           categories=TRANSACTION_CATEGORIES,
                           currencies=SUPPORTED_CURRENCIES,
                           current_currency=session.get('currency', DEFAULT_CURRENCY))
 
-@app.route('/transactions')
+@main_bp.route('/transactions')
 def transactions():
     return render_template('transactions.html', 
                           categories=TRANSACTION_CATEGORIES,
                           currencies=SUPPORTED_CURRENCIES,
                           current_currency=session.get('currency', DEFAULT_CURRENCY))
 
-@app.route('/reports')
+@main_bp.route('/reports')
 def reports():
     return render_template('reports.html', 
                           currencies=SUPPORTED_CURRENCIES,
                           current_currency=session.get('currency', DEFAULT_CURRENCY))
 
 # API Routes
-@app.route('/api/transactions', methods=['GET'])
+@main_bp.route('/api/transactions', methods=['GET'])
 def get_transactions():
     try:
         logger.info("Attempting to get all transactions")
@@ -176,13 +178,13 @@ def get_transactions():
         logger.error(f"Error getting transactions: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/transactions', methods=['POST'])
+@main_bp.route('/api/transactions', methods=['POST'])
 def add_transaction():
     try:
         logger.info("Starting add_transaction endpoint")
         data = request.json
-        logger.info(f"Received transaction data: {data}")
-        
+        logger.info(f"Received transaction data: {json.dumps(data, default=str)}")
+
         # Set default date if not provided
         if 'date' not in data or not data.get('date'):
             date_val = datetime.now()
@@ -194,22 +196,35 @@ def add_transaction():
             except ValueError as e:
                 logger.error(f"Invalid date format: {data.get('date')}")
                 return jsonify({"success": False, "error": f"Invalid date format: {str(e)}"}), 400
-            
-        # Create new transaction from request data with proper defaults
+
+        # Ensure all required fields are present with safe defaults
+        merchant = data.get('merchant', 'Unknown Merchant')
+        try:
+            amount = float(data.get('amount', 0))
+        except Exception:
+            logger.error(f"Invalid amount: {data.get('amount')}")
+            return jsonify({"success": False, "error": "Invalid amount provided."}), 400
+        currency = data.get('currency', DEFAULT_CURRENCY)
+        category = data.get('category', 'Other')
+        description = data.get('description', f'Purchase from {merchant}')
+        items = data.get('items', None)
+        receipt_data = data.get('receipt_data', None)
+
         try:
             logger.info("Creating new Transaction object")
             new_transaction = Transaction(
                 date=date_val,
-                merchant=data.get('merchant', 'Unknown Merchant'),
-                amount=float(data.get('amount', 0)),
-                currency=data.get('currency', DEFAULT_CURRENCY),
-                category=data.get('category', 'Other'),
-                description=data.get('description', ''),
-                items=data.get('items', None)
+                merchant=merchant,
+                amount=amount,
+                currency=currency,
+                category=category,
+                description=description,
+                items=items,
+                receipt_data=receipt_data
             )
             logger.info("Transaction object created successfully")
         except Exception as create_error:
-            logger.error(f"Failed to create Transaction object: {str(create_error)}")
+            logger.error(f"Failed to create Transaction object: {str(create_error)} | Payload: {json.dumps(data, default=str)}")
             return jsonify({"success": False, "error": f"Failed to create transaction: {str(create_error)}"}), 400
         
         # Explicitly commit to database with error handling
@@ -239,7 +254,7 @@ def add_transaction():
             db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
 
-@app.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
+@main_bp.route('/api/transactions/<int:transaction_id>', methods=['DELETE'])
 def delete_transaction(transaction_id):
     try:
         logger.info(f"Attempting to delete transaction with ID: {transaction_id}")
@@ -263,7 +278,7 @@ def delete_transaction(transaction_id):
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
 
-@app.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
+@main_bp.route('/api/transactions/<int:transaction_id>', methods=['PUT'])
 def update_transaction(transaction_id):
     try:
         data = request.json
@@ -322,15 +337,15 @@ def update_transaction(transaction_id):
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 400
 
-@app.route('/api/categories', methods=['GET'])
+@main_bp.route('/api/categories', methods=['GET'])
 def get_categories():
     return jsonify(TRANSACTION_CATEGORIES)
 
-@app.route('/api/currencies', methods=['GET'])
+@main_bp.route('/api/currencies', methods=['GET'])
 def get_currencies():
     return jsonify(SUPPORTED_CURRENCIES)
 
-@app.route('/api/exchange-rates', methods=['GET'])
+@main_bp.route('/api/exchange-rates', methods=['GET'])
 def get_exchange_rates():
     base_currency = request.args.get('base', DEFAULT_CURRENCY)
     
@@ -370,7 +385,7 @@ def get_exchange_rates():
         logger.error(f"Error getting exchange rates: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/update-exchange-rates', methods=['POST'])
+@main_bp.route('/api/update-exchange-rates', methods=['POST'])
 def force_update_exchange_rates():
     try:
         update_exchange_rates()
@@ -379,7 +394,7 @@ def force_update_exchange_rates():
         logger.error(f"Error updating exchange rates: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/process-receipt', methods=['POST'])
+@main_bp.route('/api/process-receipt', methods=['POST'])
 def process_receipt():
     try:
         if 'receipt' not in request.files:
@@ -393,7 +408,7 @@ def process_receipt():
         if file:
             # Save the file with a unique name
             filename = secure_filename(f"{uuid.uuid4()}_{file.filename}")
-            file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file_path = os.path.join(current_app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             
             # Process the receipt using Google Cloud Vision and Gemini APIs
@@ -439,7 +454,7 @@ def process_receipt():
         logger.error(f"Error processing receipt: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/dashboard-data', methods=['GET'])
+@main_bp.route('/api/dashboard-data', methods=['GET'])
 def dashboard_data():
     try:
         currency = request.args.get('currency', DEFAULT_CURRENCY)
@@ -510,7 +525,7 @@ def dashboard_data():
         logger.error(f"Error getting dashboard data: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/export-data', methods=['GET'])
+@main_bp.route('/api/export-data', methods=['GET'])
 def export_data():
     format_type = request.args.get('format', 'json')
     currency = request.args.get('currency', DEFAULT_CURRENCY)
@@ -578,7 +593,7 @@ def export_data():
         logger.error(f"Error exporting data: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/analyze-finances', methods=['POST'])
+@main_bp.route('/api/analyze-finances', methods=['POST'])
 def analyze_finances():
     try:
         data = request.json
@@ -634,7 +649,7 @@ def analyze_finances():
             
             return jsonify({
                 "success": True,
-                "analysis": response.text
+                "answer": response.text
             })
             
         except Exception as e:
@@ -647,3 +662,8 @@ def analyze_finances():
     except Exception as e:
         logger.error(f"Error analyzing finances: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
+
+# Alias for legacy AI endpoint to support dashboard
+@main_bp.route('/api/analyze', methods=['POST'])
+def analyze_legacy():
+    return analyze_finances()

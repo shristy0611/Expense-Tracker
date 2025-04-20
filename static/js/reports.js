@@ -1,6 +1,53 @@
 // Reports page functionality
 
 document.addEventListener('DOMContentLoaded', function() {
+    // AI Insights for Reports
+    const askAIButton = document.getElementById('ask-report-ai-btn');
+    if (askAIButton) {
+        askAIButton.addEventListener('click', async function() {
+            const questionInput = document.getElementById('report-ai-question');
+            const aiResponseDiv = document.getElementById('report-ai-response');
+            const question = questionInput.value.trim();
+            if (!question) {
+                showError('Please enter a question for the AI.');
+                return;
+            }
+            try {
+                showSpinner();
+                const currency = localStorage.getItem('preferredCurrency') || 'USD';
+                const response = await fetch('/api/analyze-finances', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question, currency })
+                });
+                if (!response.ok) {
+                    throw new Error('Failed to analyze report');
+                }
+                const data = await response.json();
+                if (data.success) {
+                    aiResponseDiv.innerHTML = `
+                        <div class="card my-3">
+                            <div class="card-header bg-primary text-white">
+                                <strong>AI Report Analysis</strong>
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">${question}</h5>
+                                <p class="card-text">${data.answer.replace(/\n/g, '<br>')}</p>
+                            </div>
+                        </div>
+                    `;
+                    questionInput.value = '';
+                } else {
+                    showError(data.error || 'AI failed to analyze report');
+                }
+            } catch (error) {
+                showError('Failed to analyze report. Please try again later.');
+                console.error('AI report analysis error:', error);
+            } finally {
+                hideSpinner();
+            }
+        });
+    }
     loadReportData();
     
     // Setup period selector

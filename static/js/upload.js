@@ -1,17 +1,30 @@
 // Upload functionality for receipt processing
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize Dropzone
-    if (document.getElementById('receipt-dropzone')) {
-        initializeDropzone();
-    }
-    
-    // Manual transaction form
+    // Manual transaction form first
     const manualForm = document.getElementById('manual-transaction-form');
     if (manualForm) {
         manualForm.addEventListener('submit', handleManualSubmit);
+        console.log('[DEBUG] Manual transaction form event listener attached');
+    } else {
+        console.error('[ERROR] Manual transaction form not found!');
     }
-    
+
+    // Initialize Dropzone (wrapped to avoid blocking errors)
+    const dropzoneEl = document.getElementById('receipt-dropzone');
+    if (dropzoneEl) {
+        try {
+            // Prevent double initialization
+            if (Dropzone.instances && Dropzone.instances.length > 0) {
+                Dropzone.instances.forEach(instance => instance.destroy());
+            }
+            initializeDropzone();
+            console.log('[DEBUG] Dropzone initialized successfully');
+        } catch (error) {
+            console.warn('[WARN] Dropzone initialization error:', error);
+        }
+    }
+
     // Currency select change handler
     const currencySelect = document.getElementById('currency');
     if (currencySelect) {
@@ -58,6 +71,13 @@ function initializeDropzone() {
                     }
                     document.getElementById('category').value = response.transaction.category;
                     document.getElementById('description').value = response.transaction.description;
+                    
+                    // Auto-submit the manual transaction form after receipt processing
+                    const manualForm = document.getElementById('manual-transaction-form');
+                    if (manualForm) {
+                        console.log('[DEBUG] Auto-submitting manual transaction form');
+                        manualForm.requestSubmit();
+                    }
                     
                     // Show the extracted data
                     const extractedDataElement = document.getElementById('extracted-data');
@@ -129,6 +149,7 @@ function updateCurrencySymbol() {
 }
 
 async function handleManualSubmit(event) {
+    console.log('[DEBUG] handleManualSubmit triggered');
     event.preventDefault();
     
     const merchant = document.getElementById('merchant').value.trim();
@@ -140,16 +161,19 @@ async function handleManualSubmit(event) {
     // Validate input
     if (!merchant) {
         showError("Please enter a merchant name");
+        console.error('[ERROR] Merchant name missing');
         return;
     }
     
     if (isNaN(amount) || amount <= 0) {
         showError("Please enter a valid amount");
+        console.error('[ERROR] Amount invalid:', amount);
         return;
     }
     
     if (!category) {
         showError("Please select a category");
+        console.error('[ERROR] Category missing');
         return;
     }
     
@@ -164,6 +188,7 @@ async function handleManualSubmit(event) {
     
     try {
         showSpinner();
+        console.log('[DEBUG] Sending transaction:', transaction);
         
         const response = await fetch('/api/transactions', {
             method: 'POST',
@@ -174,10 +199,15 @@ async function handleManualSubmit(event) {
         });
         
         if (!response.ok) {
-            throw new Error('Failed to add transaction');
+            const errorText = await response.text();
+            console.error('[ERROR] Failed to add transaction:', errorText);
+            showError('Failed to add transaction: ' + errorText);
+            hideSpinner();
+            return;
         }
         
         const data = await response.json();
+        console.log('[DEBUG] Transaction saved, response:', data);
         
         if (data.success) {
             showSuccess("Transaction added successfully!");
@@ -193,8 +223,8 @@ async function handleManualSubmit(event) {
         }
         
     } catch (error) {
-        console.error('Error adding transaction:', error);
-        showError('Failed to add transaction. Please try again.');
+        showError(error.message || 'An error occurred');
+        console.error('[ERROR] Exception in handleManualSubmit:', error);
     } finally {
         hideSpinner();
     }

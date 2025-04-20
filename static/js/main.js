@@ -260,7 +260,7 @@ async function askAIQuestion() {
     try {
         showSpinner();
         
-        const response = await fetch('/api/analyze', {
+        const response = await fetch('/api/analyze-finances', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

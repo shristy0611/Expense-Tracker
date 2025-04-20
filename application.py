@@ -1,30 +1,19 @@
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
 import os
 import logging
+from datetime import datetime
+from models import SUPPORTED_CURRENCIES, DEFAULT_CURRENCY, TRANSACTION_CATEGORIES
+from config import DevConfig, TestConfig, ProdConfig
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create the app
-app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "default-dev-secret")
-
-# Configure database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
-app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
-
-# Initialize database
-db = SQLAlchemy(app)
-
-# Import constants from models
-from models import SUPPORTED_CURRENCIES, DEFAULT_CURRENCY, TRANSACTION_CATEGORIES 
-from datetime import datetime
+# Initialize database (deferred)
+db = SQLAlchemy()
+migrate = Migrate()
 
 # Define transaction models with SQLAlchemy
 class Transaction(db.Model):
@@ -73,34 +62,65 @@ class ExchangeRate(db.Model):
             "last_updated": self.last_updated.strftime('%Y-%m-%d %H:%M:%S')
         }
 
-# Create database tables
-with app.app_context():
-    db.create_all()
-    
-    # Initialize exchange rates if they don't exist
-    if ExchangeRate.query.count() == 0:
-        logger.info("Initializing exchange rates...")
-        # Add sample rates for demonstration
-        base_rates = [
-            ExchangeRate(base_currency="USD", target_currency="EUR", rate=0.93),
-            ExchangeRate(base_currency="USD", target_currency="JPY", rate=153.5),
-            ExchangeRate(base_currency="USD", target_currency="GBP", rate=0.80),
-            ExchangeRate(base_currency="USD", target_currency="AUD", rate=1.52),
-            ExchangeRate(base_currency="USD", target_currency="CAD", rate=1.37),
-            ExchangeRate(base_currency="USD", target_currency="CHF", rate=0.91),
-            ExchangeRate(base_currency="USD", target_currency="CNY", rate=7.24),
-            ExchangeRate(base_currency="USD", target_currency="INR", rate=83.45)
-        ]
-        
-        for rate in base_rates:
-            db.session.add(rate)
-            
-        try:
-            db.session.commit()
-            logger.info("Exchange rates initialized successfully")
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error initializing exchange rates: {str(e)}")
+# Create application factory
+def create_app(config_class=None):
+    app = Flask(__name__)
+    # Dynamic config selection based on FLASK_ENV
+    if config_class:
+        cfg = config_class
+    else:
+        flask_env = os.getenv("FLASK_ENV", "development")
+        if flask_env == "production":
+            cfg = ProdConfig
+        elif flask_env == "testing":
+            cfg = TestConfig
+        else:
+            cfg = DevConfig
+    app.config.from_object(cfg)
 
-# Import routes
-import routes
+    # Disable template caching in development
+    if app.config.get('DEBUG', False):
+        app.config['TEMPLATES_AUTO_RELOAD'] = True
+        app.jinja_env.auto_reload = True
+        print('[INFO] Template auto-reload ENABLED')
+
+    # Print DB URI for debugging
+    print("DB URI:", app.config.get("SQLALCHEMY_DATABASE_URI"))
+
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+
+    # Initialize extensions
+    db.init_app(app)
+    migrate.init_app(app, db)
+
+    # Create tables and seed exchange rates
+    with app.app_context():
+        db.create_all()
+        print("[INFO] Database tables created (db.create_all called)")
+
+    # Set upload folder config
+    upload_folder = 'static/uploads'
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+    app.config['UPLOAD_FOLDER'] = upload_folder
+
+    # Apply ProxyFix middleware
+    from werkzeug.middleware.proxy_fix import ProxyFix
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
+    # Configure Google Gemini API
+    import google.generativeai as genai
+    api_key = app.config.get('GEMINI_API_KEY')
+    if not api_key:
+        raise RuntimeError('GEMINI_API_KEY not set in configuration')
+    genai.configure(api_key=api_key)
+
+    # Register blueprints
+    from routes import main_bp
+    app.register_blueprint(main_bp)
+
+    return app
+
+# WSGI entrypoint
+app = create_app()
