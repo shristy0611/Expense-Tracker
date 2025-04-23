@@ -1,0 +1,180 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Financial Reports</h1>
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-download me-1">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                Export
+            </button>
+            <ul class="dropdown-menu" aria-labelledby="exportDropdown">
+                <li><button class="dropdown-item" id="export-json">Export as JSON</button></li>
+                <li><button class="dropdown-item" id="export-csv">Export as CSV</button></li>
+            </ul>
+        </div>
+    </div>
+    
+    <!-- Report Period Selector -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <label for="report-period" class="form-label">Report Period</label>
+                    <select id="report-period" class="form-select">
+                        <option value="all" selected>All Time</option>
+                        <option value="week">Last 7 Days</option>
+                        <option value="month">Last 30 Days</option>
+                        <option value="quarter">Last 3 Months</option>
+                        <option value="year">Last 12 Months</option>
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <div class="d-flex gap-4 justify-content-md-end justify-content-center mt-3 mt-md-0">
+                        <div class="text-center">
+                            <div class="fw-bold fs-5">
+                                <span id="transaction-count">0</span>
+                            </div>
+                            <div class="text-muted small">Transactions</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- AI Insights for Reports -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Ask AI for Report Insights</h5>
+            <div class="row g-2 align-items-center">
+                <div class="col-md-9 col-12 mb-2 mb-md-0">
+                    <input type="text" id="report-ai-question" class="form-control" placeholder="e.g., What are my biggest spending trends?">
+                </div>
+                <div class="col-md-3 col-12">
+                    <button class="btn btn-primary w-100" id="ask-report-ai-btn">Ask AI</button>
+                </div>
+            </div>
+            <div id="report-ai-response"></div>
+        </div>
+    </div>
+
+    <!-- Summary Stats -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body p-3">
+                    <h6 class="text-muted mb-1">Total Spent</h6>
+                    <div class="fs-4 fw-bold" id="total-spent">$0.00</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body p-3">
+                    <h6 class="text-muted mb-1">Average Transaction</h6>
+                    <div class="fs-4 fw-bold" id="average-transaction">$0.00</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body p-3">
+                    <h6 class="text-muted mb-1">Largest Expense</h6>
+                    <div class="fs-4 fw-bold" id="largest-expense">$0.00</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card h-100">
+                <div class="card-body p-3">
+                    <h6 class="text-muted mb-1">Smallest Expense</h6>
+                    <div class="fs-4 fw-bold" id="smallest-expense">$0.00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <!-- Expense by Category -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Expenses by Category</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="category-pie-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Category Breakdown Table -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Category Breakdown</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">% of Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="category-breakdown-body">
+                                <!-- Category data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Additional Charts -->
+    <div class="row g-4">
+        <!-- Monthly Trends -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Monthly Spending Trends</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="monthly-trend-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Merchants -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">Top Merchants by Spending</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="top-merchants-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+{% endblock %}

@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import os
 load_dotenv()
 
 class Config:
@@ -23,6 +24,11 @@ class Config:
     GEMINI_API_KEYS = [os.getenv(f"GEMINI_API_KEY_{i}") for i in range(1, 11)]
     # Model to use
     GEMINI_MODEL_NAME = os.environ.get("GEMINI_PRO_MODEL", "gemini-2.0-flash-lite")
+    # RAG settings
+    RAG_MODEL_NAME = os.environ.get("RAG_MODEL_NAME", "all-MiniLM-L6-v2")
+    RAG_INDEX_PATH = os.environ.get("RAG_INDEX_PATH", "rag.index")
+    RAG_TEXTS_PATH = os.environ.get("RAG_TEXTS_PATH", "rag_texts.npy")
+    RAG_K = int(os.environ.get("RAG_K", "5"))
 
 class DevConfig(Config):
     DEBUG = True
