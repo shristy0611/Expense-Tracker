@@ -70,7 +70,7 @@ jobs:
       - name: Run tests and check coverage in Docker
         run: |
           mkdir -p ${{ github.workspace }}/coverage
-          docker run --rm -e SKIP_DB_WAIT=1 \
+          docker run --rm --network="host" -e SKIP_DB_WAIT=1 \
             -e FLASK_ENV=testing \
             -e GEMINI_API_KEY=dummy \
             -e DATABASE_URL=postgres://test:test@db:5432/test_db \
