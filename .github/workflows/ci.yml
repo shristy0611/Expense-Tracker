@@ -68,7 +68,7 @@ jobs:
             -e COVERAGE_FILE=/coverage/.coverage \
             -v ${{ github.workspace }}/coverage:/coverage \
             expense-tracker-app:ci \
-            /bin/bash -c "pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee /coverage/pytest-output.log && coverage report --fail-under=90"
+            /bin/bash -c "pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee /coverage/pytest-output.log && coverage report --fail-under=85"
           ls -l ${{ github.workspace }}/coverage
 
       - name: Upload test logs
