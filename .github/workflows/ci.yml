@@ -120,12 +120,12 @@ jobs:
       # Validate OpenAPI schema (Swagger)
       - name: Validate OpenAPI schema (Swagger)
         run: |
-          npm install -g swagger-cli
+          npm install -g @redocly/cli
           docker run -d --name apidocs_test -p 8000:5000 \
             expense-tracker-app:ci
           sleep 10
           curl -s http://localhost:8000/apispec.json -o openapi.json
-          swagger-cli validate openapi.json
+          redocly lint openapi.json
           docker stop apidocs_test
           docker rm apidocs_test
 
