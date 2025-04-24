@@ -66,20 +66,30 @@ jobs:
             flake8-errors.txt
             flake8-summary.txt
 
-      # Run tests with coverage (pytest-cov)
-      - name: Run tests and check coverage in Docker
+      # Run tests and check coverage on runner (pytest-cov)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
         run: |
-          mkdir -p ${{ github.workspace }}/coverage
-          docker run --rm --network="host" -e SKIP_DB_WAIT=1 \
-            -e FLASK_ENV=testing \
-            -e GEMINI_API_KEY=dummy \
-            -e DATABASE_URL=postgres://test:test@db:5432/test_db \
-            -e UPLOAD_FOLDER=/app/uploads \
-            -e COVERAGE_FILE=/coverage/.coverage \
-            -v ${{ github.workspace }}/coverage:/coverage \
-            expense-tracker-app:ci \
-            /bin/bash -c "for i in {1..30}; do nc -z db 5432 && break; echo 'Waiting for db...'; sleep 1; done && pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee /coverage/pytest-output.log && coverage report --fail-under=85"
-          ls -l ${{ github.workspace }}/coverage
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Wait for DB to be ready
+        run: |
+          for i in {1..30}; do nc -z db 5432 && break; echo "Waiting for db..."; sleep 1; done
+
+      - name: Run migrations
+        run: flask db upgrade
+
+      - name: Run tests with coverage
+        run: |
+          mkdir -p coverage
+          pytest --cov=app --cov-report=xml:coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee pytest-output.log
+          coverage report --fail-under=85
+          ls -l coverage
 
       - name: Upload test logs
         if: failure()
@@ -164,4 +174,3 @@ jobs:
 # - Image is built and pushed to DockerHub on main branch merges
 # - No secrets are hardcoded in code or workflow
 # - For details, see ROADMAP.md
-
