@@ -25,6 +25,8 @@ jobs:
       # Build Docker image for the app
       - name: Build Docker image
         run: docker build -t expense-tracker-app:ci .
+        env:
+          SKIP_DB_WAIT: 1  # Skip DB wait/migrations in CI
 
       # Scan Docker image for vulnerabilities using Trivy
       - name: Run Trivy vulnerability scanner
