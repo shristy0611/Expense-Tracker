@@ -29,6 +29,8 @@ def test_upload_and_list_receipt(client):
     # List receipts
     resp = client.get('/receipts')
     assert resp.status_code == 200
-    receipts = resp.get_json()
-    assert isinstance(receipts, list)
-    assert any(r['filename'] == 'test_receipt.png' for r in receipts)
+    data = resp.get_json()
+    assert isinstance(data, dict)
+    assert 'receipts' in data
+    assert isinstance(data['receipts'], list)
+    assert any(r['filename'] == 'test_receipt.png' for r in data['receipts'])
