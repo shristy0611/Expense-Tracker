@@ -57,7 +57,7 @@ jobs:
             flake8-summary.txt
 
       # Run tests with coverage (pytest-cov)
-      - name: Run tests with coverage
+      - name: Run tests and check coverage in Docker
         run: |
           mkdir -p ${{ github.workspace }}/coverage
           docker run --rm -e SKIP_DB_WAIT=1 \
@@ -68,7 +68,7 @@ jobs:
             -e COVERAGE_FILE=/coverage/.coverage \
             -v ${{ github.workspace }}/coverage:/coverage \
             expense-tracker-app:ci \
-            pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee pytest-output.log
+            /bin/bash -c "pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee /coverage/pytest-output.log && coverage report --fail-under=90"
           ls -l ${{ github.workspace }}/coverage
 
       - name: Upload test logs
@@ -84,16 +84,6 @@ jobs:
         with:
           name: coverage-report
           path: coverage/coverage.xml
-
-      # Fail if coverage is below 90%
-      - name: Check coverage threshold
-        run: |
-          if [ ! -f coverage/coverage.xml ]; then
-            echo "Error: coverage/coverage.xml not found."
-            exit 1
-          fi
-          pip install coverage
-          coverage report --fail-under=90 --data-file=coverage/.coverage
 
       # Run performance benchmarks
       - name: Run performance benchmarks inside Docker container
