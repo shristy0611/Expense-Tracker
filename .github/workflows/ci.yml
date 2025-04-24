@@ -82,6 +82,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install Tesseract OCR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-jpn
+
       - name: Wait for DB to be ready
         run: |
           for i in {1..30}; do nc -z localhost 5432 && break; echo "Waiting for db..."; sleep 1; done
@@ -123,8 +128,14 @@ jobs:
           npm install -g @redocly/cli
           docker run -d --name apidocs_test -p 8000:5000 \
             expense-tracker-app:ci
-          sleep 10
-          curl -s http://localhost:8000/apispec.json -o openapi.json
+          # Retry fetching OpenAPI spec
+          for i in {1..10}; do
+            if curl -s http://localhost:8000/apispec.json -o openapi.json; then
+              break
+            fi
+            echo "Waiting for apidocs_test..."
+            sleep 2
+          done
           redocly lint openapi.json
           docker stop apidocs_test
           docker rm apidocs_test
