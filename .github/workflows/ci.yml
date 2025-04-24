@@ -41,10 +41,10 @@ jobs:
       # Lint the codebase (flake8)
       - name: Lint with flake8
         run: |
-          docker run --rm \
+          docker run --rm -e SKIP_DB_WAIT=1 \
             expense-tracker-app:ci \
             flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics | tee flake8-errors.txt
-          docker run --rm \
+          docker run --rm -e SKIP_DB_WAIT=1 \
             expense-tracker-app:ci \
             flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics | tee flake8-summary.txt
       # Upload lint results as artifact
@@ -59,7 +59,7 @@ jobs:
       # Run tests with coverage (pytest-cov)
       - name: Run tests with coverage
         run: |
-          docker run --rm \
+          docker run --rm -e SKIP_DB_WAIT=1 \
             -e FLASK_ENV=testing \
             -e GEMINI_API_KEY=dummy \
             -e DATABASE_URL=sqlite:///test.db \

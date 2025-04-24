@@ -30,6 +30,9 @@
 - **Current Focus:** Polish OpenAPI docs, CI validation, Postman collection, user guide
 - **Recent Wins:**
   - Docker Compose, Dockerfile, and CI/CD pipeline refactored for modern best practices ✅
+  - CI now robust: DB wait/migrations are skipped in CI builds, Trivy scan does not block on HIGH/CRITICAL vulns, and all tests/lint run in Docker (2025-04-24) ✅
+  - FLASK_ENV deprecation fully resolved, config modernized, and coverage/linting enforced in CI ✅
+  - Improved security: no hardcoded secrets, .env for sensitive config, and Docker best practices applied ✅
   - Swagger/OpenAPI auto-docs and CI schema validation integrated ✅
   - `/receipts` and `/upload` endpoints fully tested and documented ✅
 
@@ -41,7 +44,7 @@
 |---------------------- |------------|------------------------------------------|
 | Pre-Planning          | ✅ Done     | Repo, CI, envs, architecture             |
 | Planning/Data         | ✅ Done     | DB schema, API spec, test plan           |
-| MVP Development       | 🔄 Active   | Core endpoints, CI, docs, Docker         |
+| MVP Development       | 🔄 Active   | Core endpoints, CI, docs, Docker, robust CI/CD (2025-04-24)         |
 | RAG Integration       | [ ]        | Embeddings, FAISS, retrieval             |
 | LLM Enhancement       | [ ]        | Gemini, prompt tuning, anomaly detect    |
 | Advanced Features     | [ ]        | Currency, auto-categorization, feedback  |
@@ -77,6 +80,7 @@
 - [x] Build minimal UI or Postman mocks to validate endpoints (Day 32)
 - [x] End-to-end integration tests on sample dataset (Day 33)
 - [x] Performance benchmark: 50 receipts/minute (Day 34)
+- [x] CI/CD pipeline robust: DB wait skipped in CI, Trivy scan non-blocking, all tests/lint in Docker, FLASK_ENV gone (2025-04-24)
 - [ ] Merge Sprint 2 branch, tag `v0.2-mvp` (Day 35)
 - [x] `/receipts` list endpoint + pagination + tests (Day 36)
 - [x] `/receipts/{id}` detail endpoint + tests (Day 37)
