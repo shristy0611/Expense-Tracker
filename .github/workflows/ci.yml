@@ -7,53 +7,93 @@ on:
     branches: [ main ]
 
 jobs:
+  # Build, lint, test, and validate the app (Dockerized for prod/dev parity)
   build-test:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:14
-        env:
-          POSTGRES_DB: test_db
-          POSTGRES_USER: test_user
-          POSTGRES_PASSWORD: test_pass
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: sqlite:///test.db
-      FLASK_ENV: testing
-      GEMINI_API_KEY: dummy
-      UPLOAD_FOLDER: uploads
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Install system dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y tesseract-ocr tesseract-ocr-jpn libgl1
-    - name: Set up pip cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pip-tools
-        pip-compile --output-file=requirements.txt requirements.in
-        pip install -r requirements.txt
-    - name: Run tests
-      run: |
-        pytest --maxfail=1 --disable-warnings
-    - name: Run performance benchmarks
-      run: |
-        pytest tests/test_perf_bench.py --maxfail=1 --disable-warnings -q
+      - uses: actions/checkout@v4
+
+      # Build Docker image for the app
+      - name: Build Docker image
+        run: docker build -t expense-tracker-app:ci .
+
+      # Lint the codebase (flake8)
+      - name: Lint with flake8
+        run: |
+          docker run --rm \
+            expense-tracker-app:ci \
+            flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+          docker run --rm \
+            expense-tracker-app:ci \
+            flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      # Run tests with coverage (pytest-cov)
+      - name: Run tests with coverage
+        run: |
+          docker run --rm \
+            -e FLASK_ENV=testing \
+            -e GEMINI_API_KEY=dummy \
+            -e DATABASE_URL=sqlite:///test.db \
+            -e UPLOAD_FOLDER=/app/uploads \
+            -v ${{ github.workspace }}/coverage:/coverage \
+            expense-tracker-app:ci \
+            pytest --cov=app --cov-report=xml:coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings
+
+      # Fail if coverage is below 90%
+      - name: Check coverage threshold
+        run: |
+          pip install coverage
+          coverage report --fail-under=90 --data-file=coverage/coverage.xml
+
+      # Run performance benchmarks
+      - name: Run performance benchmarks inside Docker container
+        run: |
+          docker run --rm \
+            -e FLASK_ENV=testing \
+            -e GEMINI_API_KEY=dummy \
+            -e DATABASE_URL=sqlite:///test.db \
+            -e UPLOAD_FOLDER=/app/uploads \
+            expense-tracker-app:ci \
+            pytest tests/test_perf_bench.py --maxfail=1 --disable-warnings -q
+
+      # Validate OpenAPI schema (Swagger)
+      - name: Validate OpenAPI schema (Swagger)
+        run: |
+          npm install -g swagger-cli
+          docker run -d --name apidocs_test -p 8000:5000 \
+            -e FLASK_ENV=testing \
+            -e GEMINI_API_KEY=dummy \
+            -e DATABASE_URL=sqlite:///test.db \
+            -e UPLOAD_FOLDER=/app/uploads \
+            expense-tracker-app:ci
+          sleep 10
+          curl -s http://localhost:8000/apispec.json -o openapi.json
+          swagger-cli validate openapi.json
+          docker stop apidocs_test
+          docker rm apidocs_test
+
+  # Build and push Docker image to DockerHub on push to main
+  dockerhub-push:
+    needs: build-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-app:latest .
+      - name: Push Docker image
+        run: docker push ${{ secrets.DOCKERHUB_USERNAME }}/expense-tracker-app:latest
+
+# ---
+# CI/CD improvements:
+# - All tests run inside Docker for prod/dev parity
+# - DockerHub credentials are referenced via GitHub secrets
+# - Image is built and pushed to DockerHub on main branch merges
+# - No secrets are hardcoded in code or workflow
+# - For details, see ROADMAP.md
+

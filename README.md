@@ -42,6 +42,24 @@ docker-compose down
 - **GET /receipts**: List receipts with pagination (`page`, `per_page`)
 - **GET /receipts/{id}**: Get details of a specific receipt
 
+## Interactive API Docs
+
+You can explore and test the API interactively via Swagger UI:
+
+```text
+http://localhost:5000/apidocs/
+```
+
+## Postman Collection
+
+Import the provided `postman_collection.json` into Postman for ready-to-use requests and examples.
+To regenerate from the OpenAPI spec:
+
+```bash
+curl http://localhost:5000/apispec.json -o openapi.json
+npx openapi2postmanv2 -s openapi.json -o postman_collection.json
+```
+
 ## Testing
 
 ```bash
@@ -71,3 +89,15 @@ Example load test for uploading receipts (simple GET example; multipart upload s
 ```bash
 wrk -t2 -c5 -d30s http://localhost:5000/upload
 ```
+
+## How to Contribute
+
+- Fork the repository and create a feature branch.
+- Install dependencies and run tests: `pytest`.
+- Submit a pull request against `main` for peer review.
+
+## Troubleshooting
+
+- Ensure Tesseract OCR is installed: `tesseract --version`.
+- Verify `UPLOAD_FOLDER` path in `.env`.
+- For CI failures, check GitHub Actions logs in the repository.

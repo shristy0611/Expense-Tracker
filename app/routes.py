@@ -6,6 +6,7 @@ from app.models import Receipt
 from app.schemas import ReceiptSchema
 import datetime
 import re
+from marshmallow import fields  # <-- Ensure fields is imported for schema use
 from app.ocr import ocr_extract, parse_receipt_fields
 from app.parser import parse_with_regex
 
@@ -21,6 +22,58 @@ def allowed_file(filename):
 
 @upload_bp.route('/upload', methods=['POST'])
 def upload_receipt():
+    """
+    Upload a receipt image and extract fields using OCR and LLM.
+    ---
+    tags:
+      - Receipts
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: file
+        in: formData
+        type: file
+        required: true
+        description: The receipt image file (png, jpg, jpeg, gif, pdf)
+      - name: notes
+        in: formData
+        type: string
+        required: false
+        description: Optional notes for the receipt
+      - name: tags
+        in: formData
+        type: string
+        required: false
+        description: Optional comma-separated tags
+    responses:
+      201:
+        description: Receipt created and parsed successfully
+        schema:
+          $ref: '#/definitions/Receipt'
+        examples:
+          application/json:
+            id: 1
+            filename: "receipt1.jpg"
+            merchant: "Starbucks"
+            date: "2025-04-24"
+            total: 4.99
+            notes: "Morning coffee"
+            tags: ["coffee", "breakfast"]
+            created_at: "2025-04-24T09:00:00"
+      400:
+        description: Invalid input or file
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+        examples:
+          application/json:
+            error: "No file part"
+    x-marshmallow-schema: ReceiptSchema
+    security:
+      - {}
+    """
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
     file = request.files['file']
@@ -65,6 +118,71 @@ def upload_receipt():
 
 @receipts_bp.route('/receipts', methods=['GET'])
 def list_receipts():
+    """
+    List all receipts with pagination.
+    ---
+    tags:
+      - Receipts
+    parameters:
+      - name: page
+        in: query
+        type: integer
+        required: false
+        default: 1
+        description: Page number
+      - name: per_page
+        in: query
+        type: integer
+        required: false
+        default: 10
+        description: Items per page
+    responses:
+      200:
+        description: Paginated list of receipts
+        schema:
+          type: object
+          properties:
+            receipts:
+              type: array
+              items:
+                $ref: '#/definitions/Receipt'
+            total:
+              type: integer
+            page:
+              type: integer
+            pages:
+              type: integer
+            per_page:
+              type: integer
+        examples:
+          application/json:
+            receipts:
+              - id: 1
+                filename: "receipt1.jpg"
+                merchant: "Starbucks"
+                date: "2025-04-24"
+                total: 4.99
+                notes: "Morning coffee"
+                tags: ["coffee", "breakfast"]
+                created_at: "2025-04-24T09:00:00"
+            total: 1
+            page: 1
+            pages: 1
+            per_page: 10
+      400:
+        description: Invalid pagination parameters
+        schema:
+          type: object
+          properties:
+            error:
+              type: string
+        examples:
+          application/json:
+            error: "Invalid page number"
+    x-marshmallow-schema: ReceiptSchema
+    security:
+      - {}
+    """
     # Pagination params
     page = int(request.args.get('page', 1))
     per_page = int(request.args.get('per_page', 10))
@@ -81,6 +199,46 @@ def list_receipts():
 
 @receipts_bp.route('/receipts/<int:receipt_id>', methods=['GET'])
 def get_receipt(receipt_id):
+    """
+    Get details of a specific receipt by ID.
+    ---
+    tags:
+      - Receipts
+    parameters:
+      - name: receipt_id
+        in: path
+        type: integer
+        required: true
+        description: ID of the receipt
+    responses:
+      200:
+        description: Receipt details
+        schema:
+          $ref: '#/definitions/Receipt'
+        examples:
+          application/json:
+            id: 1
+            filename: "receipt1.jpg"
+            merchant: "Starbucks"
+            date: "2025-04-24"
+            total: 4.99
+            notes: "Morning coffee"
+            tags: ["coffee", "breakfast"]
+            created_at: "2025-04-24T09:00:00"
+      404:
+        description: Receipt not found
+        schema:
+          type: object
+          properties:
+            message:
+              type: string
+        examples:
+          application/json:
+            message: "Receipt not found"
+    x-marshmallow-schema: ReceiptSchema
+    security:
+      - {}
+    """
     receipt = Receipt.query.get_or_404(receipt_id)
     schema = ReceiptSchema()
     return schema.jsonify(receipt), 200

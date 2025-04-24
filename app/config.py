@@ -9,6 +9,16 @@ class BaseConfig:
 class DevConfig(BaseConfig):
     FLASK_ENV = 'development'
     DEBUG = True
+    # Performance profiling configuration for development
+    FLASK_PROFILER = {
+        "enabled": True,
+        "storage": {
+            "engine": "sqlite",
+            "db_path": "flask_profiler.sqlite"
+        },
+        "endpointRoot": "profiler",
+        "basicAuth": {"enabled": False}
+    }
 
 class TestConfig(BaseConfig):
     FLASK_ENV = 'testing'
