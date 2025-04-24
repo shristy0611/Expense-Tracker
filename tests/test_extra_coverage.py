@@ -89,7 +89,7 @@ def test_receipt_schema_tag_conversion():
     schema = ReceiptSchema()
     dumped = schema.dump(Dummy())
     assert dumped['tags'] == ['a', 'b']
-    loaded = schema.load({'tags': ['x', 'y']})
+    loaded = schema.load({'tags': ['x', 'y']}, partial=True)
     assert getattr(loaded, 'tags') == 'x,y'
 
 # Routes and app tests
