@@ -19,8 +19,15 @@ def client():
 
 def test_upload_and_list_receipt(client):
     # Simulate uploading a fake image file (as bytes)
+    from PIL import Image
+    def make_valid_png_bytes():
+        buf = io.BytesIO()
+        img = Image.new("RGB", (10, 10), color="white")
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return buf
     data = {
-        'file': (io.BytesIO(b'fake image bytes'), 'test_receipt.png')
+        'file': (make_valid_png_bytes(), 'test_receipt.png')
     }
     resp = client.post('/upload', data=data, content_type='multipart/form-data')
     assert resp.status_code == 201
