@@ -59,6 +59,7 @@ jobs:
       # Run tests with coverage (pytest-cov)
       - name: Run tests with coverage
         run: |
+          mkdir -p ${{ github.workspace }}/coverage
           docker run --rm -e SKIP_DB_WAIT=1 \
             -e FLASK_ENV=testing \
             -e GEMINI_API_KEY=dummy \
@@ -66,7 +67,15 @@ jobs:
             -e UPLOAD_FOLDER=/app/uploads \
             -v ${{ github.workspace }}/coverage:/coverage \
             expense-tracker-app:ci \
-            pytest --cov=app --cov-report=xml:coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings
+            pytest --cov=app --cov-report=xml:coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee pytest-output.log
+          ls -l ${{ github.workspace }}/coverage
+
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-logs
+          path: pytest-output.log
 
       # Upload coverage report as artifact
       - name: Upload coverage report
@@ -78,6 +87,10 @@ jobs:
       # Fail if coverage is below 90%
       - name: Check coverage threshold
         run: |
+          if [ ! -f coverage/coverage.xml ]; then
+            echo "Error: coverage/coverage.xml not found."
+            exit 1
+          fi
           pip install coverage
           coverage report --fail-under=90 --data-file=coverage/coverage.xml
 
