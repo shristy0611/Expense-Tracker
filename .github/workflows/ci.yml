@@ -113,7 +113,7 @@ jobs:
       # Run performance benchmarks
       - name: Run performance benchmarks inside Docker container
         run: |
-          docker run --rm \
+          docker run --rm -e SKIP_DB_WAIT=1 \
             expense-tracker-app:ci \
             pytest tests/test_perf_bench.py --maxfail=1 --disable-warnings -q
 
