@@ -33,6 +33,7 @@ class TestConfig(BaseConfig):
     """
     TESTING = True
     DEBUG = False
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
 class ProdConfig(BaseConfig):
     """
