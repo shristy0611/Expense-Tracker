@@ -27,5 +27,7 @@ RUN chmod +x /wait-for-it.sh
 # Expose port
 EXPOSE 5000
 
-# Entrypoint: wait for db, run migrations, then start Flask
-ENTRYPOINT ["/bin/bash", "-c", "/wait-for-it.sh db:5432 -t 60 -- flask db upgrade && exec flask run --host=0.0.0.0"]
+# Entrypoint: wait for db, run migrations or tests, then exec passed command
+ENTRYPOINT ["/bin/bash", "-c", "/wait-for-it.sh db:5432 -t 60 -- flask db upgrade && exec \"$@\"", "--"]
+# Default command: start Flask server
+CMD ["flask", "run", "--host=0.0.0.0"]

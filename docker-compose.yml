@@ -8,10 +8,13 @@ services:
       - ./flask_profiler.sqlite:/app/flask_profiler.sqlite
     environment:
       - FLASK_APP=run.py
-      - FLASK_ENV=development
-      - UPLOAD_FOLDER=/app/uploads
+      # Use new config variable for Flask config selection
+      - APP_CONFIG=development
+      - FLASK_DEBUG=1
+      - DEBUG=1
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/expense_tracker
+      - UPLOAD_FOLDER=/app/uploads
     depends_on:
       - db
     healthcheck:

@@ -11,13 +11,18 @@ ma = Marshmallow()
 migrate = Migrate()
 
 def create_app(config_name=None):
+    """
+    Create and configure the Flask application.
+    Configuration is determined by the `config_name` argument or the APP_CONFIG environment variable.
+    Defaults to DevConfig if none is provided.
+    """
     app = Flask(__name__, instance_relative_config=False)
 
     # Determine config
-    env = config_name or os.getenv('FLASK_ENV', 'development')
-    if env == 'production':
+    config = config_name or os.getenv('APP_CONFIG', 'development')
+    if config == 'production':
         app.config.from_object(ProdConfig)
-    elif env == 'testing':
+    elif config == 'testing':
         app.config.from_object(TestConfig)
     else:
         app.config.from_object(DevConfig)

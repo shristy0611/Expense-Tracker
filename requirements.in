@@ -1,5 +1,6 @@
 # Primary dependencies
 flask==2.2.5
+werkzeug<3.0.0
 flask_sqlalchemy>=2.5
 flask-marshmallow>=0.14
 marshmallow-sqlalchemy>=0.30.0

@@ -7,8 +7,13 @@ class BaseConfig:
     UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER', 'uploads')
 
 class DevConfig(BaseConfig):
-    FLASK_ENV = 'development'
+    """
+    Development configuration.
+    - Enables debug mode.
+    - Enables Flask-Profiler for local performance analysis.
+    """
     DEBUG = True
+    FLASK_DEBUG = 1
     # Performance profiling configuration for development
     FLASK_PROFILER = {
         "enabled": True,
@@ -21,9 +26,18 @@ class DevConfig(BaseConfig):
     }
 
 class TestConfig(BaseConfig):
-    FLASK_ENV = 'testing'
+    """
+    Testing configuration.
+    - Enables testing mode.
+    - Disables debug mode.
+    """
     TESTING = True
+    DEBUG = False
 
 class ProdConfig(BaseConfig):
-    FLASK_ENV = 'production'
+    """
+    Production configuration.
+    - Disables debug and testing modes.
+    """
     DEBUG = False
+    TESTING = False

@@ -13,19 +13,46 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Notify Slack on workflow start
+      - name: Slack Notification (Started)
+        if: always()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: '{"text":":rocket: CI/CD workflow started for ${{ github.repository }} on ${{ github.ref }}."}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
       # Build Docker image for the app
       - name: Build Docker image
         run: docker build -t expense-tracker-app:ci .
+
+      # Scan Docker image for vulnerabilities using Trivy
+      - name: Run Trivy vulnerability scan
+        uses: aquasecurity/trivy-action@0.19.0
+        with:
+          image-ref: expense-tracker-app:ci
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+          severity: CRITICAL,HIGH
 
       # Lint the codebase (flake8)
       - name: Lint with flake8
         run: |
           docker run --rm \
             expense-tracker-app:ci \
-            flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics
+            flake8 app tests --count --select=E9,F63,F7,F82 --show-source --statistics | tee flake8-errors.txt
           docker run --rm \
             expense-tracker-app:ci \
-            flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+            flake8 app tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics | tee flake8-summary.txt
+      # Upload lint results as artifact
+      - name: Upload flake8 lint results
+        uses: actions/upload-artifact@v4
+        with:
+          name: flake8-lint-results
+          path: |
+            flake8-errors.txt
+            flake8-summary.txt
 
       # Run tests with coverage (pytest-cov)
       - name: Run tests with coverage
@@ -38,6 +65,13 @@ jobs:
             -v ${{ github.workspace }}/coverage:/coverage \
             expense-tracker-app:ci \
             pytest --cov=app --cov-report=xml:coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings
+
+      # Upload coverage report as artifact
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/coverage.xml
 
       # Fail if coverage is below 90%
       - name: Check coverage threshold
@@ -71,6 +105,24 @@ jobs:
           swagger-cli validate openapi.json
           docker stop apidocs_test
           docker rm apidocs_test
+
+      # Notify Slack on workflow success
+      - name: Slack Notification (Success)
+        if: success()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: '{"text":":white_check_mark: CI/CD workflow succeeded for ${{ github.repository }} on ${{ github.ref }}."}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      # Notify Slack on workflow failure
+      - name: Slack Notification (Failure)
+        if: failure()
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          payload: '{"text":":x: CI/CD workflow failed for ${{ github.repository }} on ${{ github.ref }}. Check the Actions tab for details."}'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
   # Build and push Docker image to DockerHub on push to main
   dockerhub-push:
