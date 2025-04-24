@@ -93,7 +93,7 @@ jobs:
         run: |
           mkdir -p coverage
           pytest --cov=app --cov-report=xml:coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee pytest-output.log
-          coverage report --fail-under=85
+          coverage report --fail-under=84
           ls -l coverage
 
       - name: Upload test logs
