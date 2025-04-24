@@ -65,6 +65,7 @@ jobs:
             -e GEMINI_API_KEY=dummy \
             -e DATABASE_URL=sqlite:///test.db \
             -e UPLOAD_FOLDER=/app/uploads \
+            -e COVERAGE_FILE=/coverage/.coverage \
             -v ${{ github.workspace }}/coverage:/coverage \
             expense-tracker-app:ci \
             pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee pytest-output.log
@@ -92,7 +93,7 @@ jobs:
             exit 1
           fi
           pip install coverage
-          coverage report --fail-under=90 --data-file=coverage/coverage.xml
+          coverage report --fail-under=90 --data-file=coverage/.coverage
 
       # Run performance benchmarks
       - name: Run performance benchmarks inside Docker container
