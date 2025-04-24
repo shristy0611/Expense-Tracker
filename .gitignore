@@ -1,17 +1,20 @@
-.env
+# Virtual environment
+.venv/
+
+# Byte-compiled files
 __pycache__/
-*.pyc
-instance/
+*.py[cod]
+
+# Environment variables
+.env
 .env.*
-.DS_Store
-*.sqlite3
+
+# SQLite database files
 *.db
+
+# Log files
+*.log
+
+# IDE/editor configs
 .vscode/
 .idea/
-*.log
-node_modules/
-.envrc
-*.egg-info/
-venv/
-.envrc
-legacy/

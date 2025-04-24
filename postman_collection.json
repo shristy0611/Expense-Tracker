@@ -1,0 +1,49 @@
+{
+  "info": {
+    "_postman_id": "expense-tracker-collection-2025-04-24",
+    "name": "Expense Tracker API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Upload Receipt",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "file",
+              "type": "file",
+              "src": "<REPLACE_WITH_RECEIPT_IMAGE_PATH>"
+            }
+          ]
+        },
+        "url": {
+          "raw": "http://localhost:5000/upload",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["upload"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "List Receipts",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:5000/receipts",
+          "protocol": "http",
+          "host": ["localhost"],
+          "port": "5000",
+          "path": ["receipts"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

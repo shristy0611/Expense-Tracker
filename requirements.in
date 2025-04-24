@@ -1,0 +1,20 @@
+# Primary dependencies
+flask>=2.0
+flask_sqlalchemy>=2.5
+flask-marshmallow>=0.14
+marshmallow-sqlalchemy>=0.30.0
+flask-migrate>=4.0
+python-dotenv>=1.0.0
+Pillow>=9.0.0
+pytesseract>=0.3.10
+openai>=0.27.0
+sqlalchemy>=2.0
+
+# Dev tooling
+pip-tools
+pytest>=7.2
+pytest-cov>=4.0
+black
+flake8
+isort
+pre-commit>=3.4

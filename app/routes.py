@@ -1,41 +1,86 @@
-from flask import Blueprint, jsonify, request, current_app
-import json  # needed for serializing item lists
+import os
+from flask import Blueprint, request, jsonify, current_app
+from werkzeug.utils import secure_filename
 from app import db
-from app.models import Transaction
+from app.models import Receipt
+from app.schemas import ReceiptSchema
+import datetime
+import re
+from app.ocr import ocr_extract, parse_receipt_fields
+from app.parser import parse_with_regex
 
-main_bp = Blueprint('main', __name__)
+# Blueprints
+upload_bp = Blueprint('upload', __name__)
+receipts_bp = Blueprint('receipts', __name__)
 
-@main_bp.route('/', methods=['GET'])
-def index():
-    """Health check endpoint."""
-    return jsonify({'status': 'ok', 'message': 'Expense Tracker API'}), 200
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
 
-@main_bp.route('/transactions', methods=['GET'])
-def list_transactions():
-    """List all transactions."""
-    txs = Transaction.query.all()
-    return jsonify([t.to_dict() for t in txs]), 200
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-@main_bp.route('/transactions', methods=['POST'])
-def create_transaction():
-    """Create a new transaction."""
-    data = request.get_json() or {}
-    tx = Transaction(
-        merchant=data['merchant'],
-        amount=data['amount'],
-        currency=data.get('currency', current_app.config.get('DEFAULT_CURRENCY', 'USD')),
-        category=data['category'],
-        description=data.get('description'),
-        receipt_data=data.get('receipt_data'),
-        items=json.dumps(data.get('items', [])),
-        shop_name=data.get('shop_name'),
-        tax=data.get('tax'),
-        payment_method=data.get('payment_method'),
-        receipt_number=data.get('receipt_number'),
-        address=data.get('address'),
-        phone_number=data.get('phone_number'),
-        note=data.get('note')
-    )
-    db.session.add(tx)
-    db.session.commit()
-    return jsonify(tx.to_dict()), 201
+@upload_bp.route('/upload', methods=['POST'])
+def upload_receipt():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file part'}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No selected file'}), 400
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        upload_folder = current_app.config['UPLOAD_FOLDER']
+        os.makedirs(upload_folder, exist_ok=True)
+        file_path = os.path.join(upload_folder, filename)
+        file.save(file_path)
+        # Parse optional notes/tags from form
+        notes = request.form.get('notes')
+        tags_raw = request.form.get('tags')
+        tags = None
+        if tags_raw:
+            # Accept comma-separated only (do not split on spaces)
+            tags = ','.join([t.strip() for t in tags_raw.split(',') if t.strip()])
+        # Create DB record and parse fields
+        receipt = Receipt(filename=filename, notes=notes, tags=tags)
+        db.session.add(receipt)
+        db.session.commit()
+        try:
+            raw_text = ocr_extract(file_path)
+            parsed = parse_receipt_fields(raw_text)
+            # Fallback regex parsing for missing fields
+            if not all([parsed.get('merchant'), parsed.get('date'), parsed.get('total')]):
+                regexed = parse_with_regex(raw_text)
+                parsed = {k: parsed.get(k) or regexed.get(k) for k in ['merchant', 'date', 'total']}
+            if parsed.get('merchant'):
+                receipt.merchant = parsed['merchant']
+            if parsed.get('date'):
+                receipt.date = datetime.date.fromisoformat(parsed['date'])
+            if parsed.get('total'):
+                receipt.total = float(parsed['total'])
+            db.session.commit()
+        except Exception as e:
+            current_app.logger.error(f"OCR parsing failed: {e}")
+        schema = ReceiptSchema()
+        return schema.jsonify(receipt), 201
+    return jsonify({'error': 'File type not allowed'}), 400
+
+@receipts_bp.route('/receipts', methods=['GET'])
+def list_receipts():
+    # Pagination params
+    page = int(request.args.get('page', 1))
+    per_page = int(request.args.get('per_page', 10))
+    q = Receipt.query.order_by(Receipt.created_at.desc())
+    paginated = q.paginate(page=page, per_page=per_page, error_out=False)
+    schema = ReceiptSchema(many=True)
+    return jsonify({
+        'receipts': schema.dump(paginated.items),
+        'total': paginated.total,
+        'page': paginated.page,
+        'pages': paginated.pages,
+        'per_page': paginated.per_page
+    })
+
+@receipts_bp.route('/receipts/<int:receipt_id>', methods=['GET'])
+def get_receipt(receipt_id):
+    receipt = Receipt.query.get_or_404(receipt_id)
+    schema = ReceiptSchema()
+    return schema.jsonify(receipt), 200

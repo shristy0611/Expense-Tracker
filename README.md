@@ -1,69 +1,73 @@
-# Expense Tracker API
+# Expense Tracker
 
-A Flask-based service to upload and process receipt images, extract transaction data via OCR and RAG+LLM, and store structured records in a database.
-
-## Features
-
-- REST endpoints for health-check and transaction CRUD
-- Flask application factory (`app.create_app`)
-- SQLAlchemy models for transactions
-- RAG+LLM-powered categorization and item inference
-- FAISS index for similar receipt retrieval
-- Modular agents (OCR, currency conversion, categorization, notifications)
-- Unit tests with pytest and CI integration
+A Flask-based application to upload, parse, and manage receipts with OCR, pagination, notes, and tags.
 
 ## Prerequisites
 
-- Python 3.10+
-- Tesseract OCR installed (`brew install tesseract` on macOS)
-- Dependencies in `requirements.txt`
+- Python 3.12
+- Docker & Docker Compose (optional)
+- Tesseract OCR (+ Japanese language pack)
 
-## Installation
+## Installation & Running Locally
 
 ```bash
-git clone <repo_url>
+# Clone
+git clone https://your.repo/Expense-Tracker.git
 cd Expense-Tracker
-python3 -m venv venv
+
+# Virtual env
+env/bin/python -m venv venv
 source venv/bin/activate
+
+# Install deps
 pip install -r requirements.txt
+
+# Run migrations
+FLASK_APP=run.py venv/bin/flask db upgrade
+
+# Start the app
+venv/bin/flask run --host=0.0.0.0
 ```
 
-## Configuration
-
-Copy `.env.example` to `.env` and set:
-
-```dotenv
-DATABASE_URL=sqlite:///expense_tracker.db
-FLASK_ENV=development
-GEMINI_API_KEY=<your_gemini_key>
-# Optional RAG settings
-# RAG_MODEL_NAME=all-MiniLM-L6-v2
-# RAG_INDEX_PATH=rag.index
-# RAG_TEXTS_PATH=rag_texts.npy
-# RAG_K=5
-```
-
-## Running
+## Docker
 
 ```bash
-export FLASK_APP=app
-flask run
+docker-compose up --build
+docker-compose down
 ```
 
 ## API Endpoints
 
-- GET `/` — Health check
-- GET `/transactions` — List all transactions
-- POST `/transactions` — Create a new transaction (JSON payload)
+- **POST /upload**: Upload receipt image (+optional `notes`, `tags` form fields)
+- **GET /receipts**: List receipts with pagination (`page`, `per_page`)
+- **GET /receipts/{id}**: Get details of a specific receipt
 
 ## Testing
 
-Run tests:
 ```bash
-pytest tests --maxfail=1 --disable-warnings --quiet --cov=app --cov=services --cov-report=term-missing
+# Run all tests
+env/bin/pytest
+
+# Run performance benchmarks
+env/bin/pytest tests/test_perf_bench.py
 ```
 
-## Deployment
+## Performance Benchmark
 
-- Build and push Docker image (`docker-compose up --build`)
-- CI/CD via GitHub Actions
+### `pytest-benchmark`
+
+Benchmarks are in `tests/test_perf_bench.py`, asserting 50 uploads and 50 list requests complete in under 60s.
+
+### `wrk`
+
+Example load test for listing receipts:
+
+```bash
+wrk -t2 -c10 -d30s http://localhost:5000/receipts?page=1&per_page=50
+```
+
+Example load test for uploading receipts (simple GET example; multipart upload scripting requires custom `wrk` script):
+
+```bash
+wrk -t2 -c5 -d30s http://localhost:5000/upload
+```
