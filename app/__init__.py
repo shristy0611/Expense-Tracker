@@ -4,7 +4,10 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from app.config import DevConfig, TestConfig, ProdConfig
-from flasgger import Swagger
+try:
+    from flasgger import Swagger
+except ImportError:
+    Swagger = None
 
 db = SQLAlchemy()
 ma = Marshmallow()
@@ -46,7 +49,8 @@ def create_app(config_name=None):
         "swagger_ui": True,
         "specs_route": "/apidocs/"
     }
-    Swagger(app, config=swagger_config)
+    if Swagger:
+        Swagger(app, config=swagger_config)
     # --- End Swagger/OpenAPI integration ---
 
     # --- Flask-Profiler integration ---
