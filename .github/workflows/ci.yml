@@ -37,7 +37,7 @@ jobs:
     - name: Install system dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y tesseract-ocr tesseract-ocr-jpn libgl1-mesa-glx
+        sudo apt-get install -y tesseract-ocr tesseract-ocr-jpn libgl1
     - name: Set up pip cache
       uses: actions/cache@v4
       with:

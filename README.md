@@ -12,7 +12,7 @@ A Flask-based application to upload, parse, and manage receipts with OCR, pagina
 
 ```bash
 # Clone
-git clone https://your.repo/Expense-Tracker.git
+git clone https://github.com/shristy0611/Expense-Tracker.git
 cd Expense-Tracker
 
 # Virtual env
