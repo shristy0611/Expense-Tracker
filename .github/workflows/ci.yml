@@ -20,9 +20,9 @@ jobs:
         ports:
           - 5432:5432
     env:
-      FLASK_ENV: testing
+      FLASK_DEBUG: '1'
       GEMINI_API_KEY: dummy
-      DATABASE_URL: postgres://test:test@localhost:5432/test_db
+      DATABASE_URL: postgresql://test:test@localhost:5432/test_db
       UPLOAD_FOLDER: /app/uploads
 
     steps:
