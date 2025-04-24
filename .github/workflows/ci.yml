@@ -126,7 +126,7 @@ jobs:
       - name: Validate OpenAPI schema (Swagger)
         run: |
           npm install -g @redocly/cli
-          docker run -d --name apidocs_test -p 8000:5000 \
+          docker run -d -e SKIP_DB_WAIT=1 -e APP_CONFIG=testing -e FLASK_APP=run.py --name apidocs_test -p 8000:5000 \
             expense-tracker-app:ci
           # Retry fetching OpenAPI spec
           for i in {1..10}; do
