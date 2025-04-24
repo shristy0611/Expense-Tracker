@@ -10,6 +10,16 @@ jobs:
   # Build, lint, test, and validate the app (Dockerized for prod/dev parity)
   build-test:
     runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+
     steps:
       - uses: actions/checkout@v4
 
@@ -63,12 +73,12 @@ jobs:
           docker run --rm -e SKIP_DB_WAIT=1 \
             -e FLASK_ENV=testing \
             -e GEMINI_API_KEY=dummy \
-            -e DATABASE_URL=sqlite:///test.db \
+            -e DATABASE_URL=postgres://test:test@db:5432/test_db \
             -e UPLOAD_FOLDER=/app/uploads \
             -e COVERAGE_FILE=/coverage/.coverage \
             -v ${{ github.workspace }}/coverage:/coverage \
             expense-tracker-app:ci \
-            /bin/bash -c "pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee /coverage/pytest-output.log && coverage report --fail-under=85"
+            /bin/bash -c "for i in {1..30}; do nc -z db 5432 && break; echo 'Waiting for db...'; sleep 1; done && pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee /coverage/pytest-output.log && coverage report --fail-under=85"
           ls -l ${{ github.workspace }}/coverage
 
       - name: Upload test logs
