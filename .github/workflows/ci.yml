@@ -67,7 +67,7 @@ jobs:
             -e UPLOAD_FOLDER=/app/uploads \
             -v ${{ github.workspace }}/coverage:/coverage \
             expense-tracker-app:ci \
-            pytest --cov=app --cov-report=xml:coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee pytest-output.log
+            pytest --cov=app --cov-report=xml:/coverage/coverage.xml --cov-report=term --maxfail=1 --disable-warnings -vv | tee pytest-output.log
           ls -l ${{ github.workspace }}/coverage
 
       - name: Upload test logs
